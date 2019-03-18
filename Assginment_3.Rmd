@@ -1,0 +1,19 @@
+---
+title: "Assignment# 3"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+eval_data_url <- 'https://raw.githubusercontent.com/jjohn81/DATA621_Assignment_3/master/crime-evaluation-data_modified.csv'
+train_data_url <- 'https://github.com/jjohn81/DATA621_Assignment_3/blob/master/crime-evaluation-data_modified.csv'
+
+```
+
+### Import Data
+
+```{r Import}
+modified <- read.csv(eval_data_url)
+modified <- read.csv(train_data_url)
+```
