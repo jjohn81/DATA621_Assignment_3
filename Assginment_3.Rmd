@@ -4,16 +4,77 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
+library(corrplot)
 knitr::opts_chunk$set(echo = TRUE)
-
 eval_data_url <- 'https://raw.githubusercontent.com/jjohn81/DATA621_Assignment_3/master/crime-evaluation-data_modified.csv'
-train_data_url <- 'https://github.com/jjohn81/DATA621_Assignment_3/blob/master/crime-evaluation-data_modified.csv'
-
+train_data_url <- 'https://raw.githubusercontent.com/jjohn81/DATA621_Assignment_3/master/crime-training-data_modified.csv'
 ```
 
 ### Import Data
 
+
 ```{r Import}
-modified <- read.csv(eval_data_url)
-modified <- read.csv(train_data_url)
+train_data <- read.csv(train_data_url)
+eval_data <- read.csv(eval_data_url)
+
 ```
+  
+    Training dataset contains `r nrow(train_data)` observations and `r ncol(train_data)` variables.
+    Evaluation dataset contains `r nrow(eval_data)` observations and `r ncol(eval_data)` variables.
+    There are no missing values in the dataset; however, there are alot of zero values( fo example, zn         
+    variable) and we will treat those values as valid.
+
+#### Summary 
+    I dont know how to summarize this data. Just printing summary or boxplot doesnt really explain the data well. 
+    From histograms and QQ plots, we see the data is not normally distributed and skewed.  
+    
+    #TODO
+        Transformations?
+    
+
+```{r}
+ 
+
+par(mfrow=c(3, 3))
+colnames <- dimnames(train_data)[[2]]
+
+  for(col in 2:ncol(train_data)) {
+hist(train_data[,col],breaks = 25)
+qqnorm(train_data[,col])
+qqline(train_data[,col])
+    
+    
+  }
+
+```
+
+```{r}
+train <- as.data.frame((train))
+
+par(mfrow=c(3, 3))
+colnames <- dimnames(train)[[2]]
+
+  for(col in 2:ncol(train)) {
+
+    d <- density(na.omit(train[,col]))
+   #d <- qqnorm(na.omit(train[,col]))
+    plot(d, type="n", main=colnames[col])
+    polygon(d, col="blue", border="gray")
+  }
+```
+
+#### cor plot
+```{r}
+#TODO -- Explain this corr 
+corrplot(cor(train_data))
+corrplot(cor(train_data), order = "AOE")
+```
+
+
+#### Data prep
+
+    We might need to do some sort of transformation. 
+    
+    
+#### Model Selection
+    
