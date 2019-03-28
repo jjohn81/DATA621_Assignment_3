@@ -1,0 +1,213 @@
+---
+title: "group 1 HW 3 DATA 621"
+author: "Joby John, Jun Pan, Zachary Herold, Murali Kunissery "
+date: "March 19, 2019"
+output: html_document
+---
+
+Overview In this homework assignment, we will explore, analyze and model a data set containing information on crime for various neighborhoods of a major city. Each record has a response variable indicating whether or not the crime rate is above the median crime rate (1) or not (0). So "target" is a dependent variable (response variable) in this study.  Other variables will be independent variables in this study.
+
+Our objective is to build a binary logistic regression model on the training data set to predict whether the neighborhood will be at risk for high crime levels. we will provide classifications and probabilities for the evaluation data set using our binary logistic regression model. We will only use the variables given to us (or variables that we derive from the variables provided). Below is a short description of the variables of interest in the data set: 
+ 
+
+Here is the description of the variables:
+???(1) zn: proportion of residential land zoned for large lots (over 25000 square feet) (predictor variable) 
+(2) indus: proportion of non-retail business acres per suburb (predictor variable) ???
+(3) chas: a dummy var. for whether the suburb borders the Charles River (1) or not (0) (predictor variable) ???
+(4) nox: nitrogen oxides concentration (parts per 10 million) (predictor variable) ???
+(5) rm: average number of rooms per dwelling (predictor variable) ???
+(6) age: proportion of owner-occupied units built prior to 1940 (predictor variable) ???
+(7) dis: weighted mean of distances to five Boston employment centers (predictor variable) ???
+(8) rad: index of accessibility to radial highways (predictor variable) 
+(9)??? tax: full-value property-tax rate per $10,000 (predictor variable) 
+(10)??? ptratio: pupil-teacher ratio by town (predictor variable) 
+(11)??? black: 1000(Bk - 0.63)2 where Bk is the proportion of blacks by town (predictor variable) 
+(12)??? lstat: lower status of the population (percent) (predictor variable) 
+(13)??? medv: median value of owner-occupied homes in $1000s (predictor variable) 
+(14) ??? target: whether the crime rate is above the median crime rate (1) or not (0) (response variable) 
+
+
+
+Write Up: 
+ 
+1. DATA EXPLORATION (35 Points) 
+ 
+Describe the size and the variables in the crime training data set. Consider that too much detail will cause a manager to lose interest while too little detail will make the manager consider that you aren't doing your job. Some suggestions are given below. Please do NOT treat this as a check list of things to do to complete the assignment. You should have your own thoughts on what to tell the boss. These are just ideas. 
+a. Mean / Standard Deviation / Median 
+b. Bar Chart or Box Plot of the data 
+c. Is the data correlated to the target variable (or to other variables?) 
+d. Are any of the variables missing and need to be imputed "fixed"? 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+library(car)
+library(caTools)
+library(caret)
+library(corrplot)
+library(data.table)
+library(dplyr)
+library(geoR)
+library(ggplot2)
+library(grid)
+library(gridExtra)
+library(kableExtra)
+library(knitr)
+library(MASS)
+library(naniar)
+library(nortest)
+library(pscl)
+library(psych)
+library(ROCR)
+library(testthat)
+```
+
+Using read.csv function to access data
+
+```{r}
+train <- read.csv("https://raw.githubusercontent.com/jjohn81/DATA621_Assignment_3/master/crime-training-data_modified.csv")
+evaluation <- read.csv("https://raw.githubusercontent.com/jjohn81/DATA621_Assignment_3/master/crime-evaluation-data_modified.csv")
+```
+
+using summary function to get the median, mean, quartiles, min and max of the variables.
+
+```{r}
+summary(train)
+```
+
+Using glimpse function to overview the class of variable and the dataset.
+
+```{r}
+glimpse(train)
+```
+
+Using vis_miss function and is.na function to check the missing data
+
+```{r}
+vis_miss(train)
+```
+
+There is no missing data in the dataset.
+
+```{r}
+colSums(is.na(train))
+```
+
+There is no missing data in the dataset.
+
+Let us use ggplot to overview the dependent variable:
+
+```{r}
+table(train$target)
+```
+
+```{r}
+boxplot(train,xlab="predictor comparitive")
+```
+
+```{r}
+train <- as.data.frame((train))
+
+par(mfrow=c(3, 3))
+colnames <- dimnames(train)[[2]]
+
+  for(col in 2:ncol(train)) {
+
+    d <- density(na.omit(train[,col]))
+   #d <- qqnorm(na.omit(train[,col]))
+    plot(d, type="n", main=colnames[col])
+    polygon(d, col="blue", border="gray")
+  }
+
+
+```
+
+```{r}
+for ( column in colnames(train)) { plot(density(train[,column]), main = column)}
+```
+2. DATA PREPARATION (35 Points) 
+ 
+Describe how you have transformed the data by changing the original variables or creating new variables. If you did transform the data or create new variables, discuss why you did this. Here are some possible transformations. 
+ 
+a. Fix missing values (maybe with a Mean or Median value)
+b. Create flags to suggest if a variable was missing 
+c. Transform data by putting it into buckets 
+d. Mathematical transforms such as log or square root (or use Box-Cox) 
+e. Combine variables (such as ratios or adding or multiplying) to create new variables 
+
+
+
+
+3. BUILD MODELS (25 Points) 
+ 
+Using the training data, build at least three different binary logistic regression models, using different variables (or the same variables with different transformations). You may select the variables manually, use an approach such as Forward or Stepwise, use a different approach, or use a combination of techniques. Describe the techniques you used. If you manually selected a variable for inclusion into the model or exclusion into the model, indicate why this was done. 
+ 
+Be sure to explain how you can make inferences from the model, as well as discuss other relevant model output. Discuss the coefficients in the models, do they make sense? Are you keeping the model even though it is counter intuitive? Why? The boss needs to know. 
+ 
+
+#Model 1
+Here is a model with all predictors (and no transformations) included
+```{r}
+general.model <- glm(target ~ ., data = train, family=binomial())
+summary(general.model)
+```
+If we set p <0.05 will be statistical significance, we can find from the above analysis, the following predictors are positively associated with crime rates (nox, age, dis, rad, ptratio, and medv); the following predictors are negatively associated with crime rates(indus and tax).
+
+(2) indus: proportion of non-retail business acres per suburb (predictor variable) 
+(4) nox: nitrogen oxides concentration (parts per 10 million) (predictor variable) 
+(6) age: proportion of owner-occupied units built prior to 1940 (predictor variable) 
+(7) dis: weighted mean of distances to five Boston employment centers (predictor variable) 
+(8) rad: index of accessibility to radial highways (predictor variable) 
+(9) tax: full-value property-tax rate per $10,000 (predictor variable) 
+(10) ptratio: pupil-teacher ratio by town (predictor variable) 
+(13) medv: median value of owner-occupied homes in $1000s (predictor variable) 
+(14)  target: whether the crime rate is above the median crime rate (1) or not (0) (response variable) 
+
+
+
+#Model 2, 5 predictor model
+```{r}
+# Correlation matrix
+cm <- cor(train, use="pairwise.complete.obs")
+cm <- round(cm, 2)
+cmout <- as.data.frame(cm) %>% mutate_all(function(x) {
+  cell_spec(x, "html", color = ifelse(x>0.5 | x<(-0.5),"blue","black"))
+  })
+rownames(cmout) <- colnames(cmout)
+cmout %>%
+  kable("html", escape = F, align = "c", row.names = TRUE) %>%
+  kable_styling("striped", full_width = F)
+
+pairs(train)
+
+```
+
+The second model includes 5 variables with the highest correlation coefficients when compared agains the target variable. This will allow the testing of model performance evaluation methods as well as corresponding R code.
+```{r}
+model2 <-glm(formula = target ~ nox + age + dis + rad + tax, family = binomial(link = "logit"), 
+     data = train)
+model2
+```
+
+
+```{r}
+summary(model2)
+```
+Among the five preditor, we feel that nox, age, rad, and tax are associated with crime rate.  There is no evidence showing dis is related to crime rate.
+
+
+
+
+
+
