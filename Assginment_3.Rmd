@@ -29,7 +29,8 @@ eval_data <- read.csv(eval_data_url)
     From histograms and QQ plots, we see the data is not normally distributed and skewed.  
     
     #TODO
-        Transformations?
+        No need to transformation since we are using GLM 
+        No need to look for normality and diagnostic plots either
     
 
 ```{r}
@@ -77,4 +78,8 @@ corrplot(cor(train_data), order = "AOE")
     
     
 #### Model Selection
-    
+```{r}
+full.model <- glm(train_data$target ~ ., family=binomial, train_data)
+summary(full.model)
+plot(full.model$ fitted.values, full.model$residuals)
+```
