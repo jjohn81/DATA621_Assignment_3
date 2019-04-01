@@ -111,9 +111,15 @@ exclude.high.vif.model <- glm(train_data$target ~  zn+indus+chas+nox+age+dis+rad
 summary(full.model)
 
 ```
+
 #### Model Selection
-Do these for all three models and select a model based on these and explain.
-  ##confusion matrix
-  ##ROC
-  ##AUC
-  #AIC and Residual deviance 
+    Do these for all three models and select a model based on these and explain.
+
+##confusion matrix
+
+##ROC
+
+##AUC
+
+#AIC and Residual deviance 
+
