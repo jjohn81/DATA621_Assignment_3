@@ -5,6 +5,7 @@ output: html_document
 
 ```{r setup, include=FALSE}
 library(corrplot)
+library(caret)
 knitr::opts_chunk$set(echo = TRUE)
 eval_data_url <- 'https://raw.githubusercontent.com/jjohn81/DATA621_Assignment_3/master/crime-evaluation-data_modified.csv'
 train_data_url <- 'https://raw.githubusercontent.com/jjohn81/DATA621_Assignment_3/master/crime-training-data_modified.csv'
@@ -36,39 +37,43 @@ eval_data <- read.csv(eval_data_url)
 ```{r}
  
 
-par(mfrow=c(3, 3))
-colnames <- dimnames(train_data)[[2]]
+#par(mfrow=c(3, 3))
+#colnames <- dimnames(train_data)[[2]]
 
-  for(col in 2:ncol(train_data)) {
-hist(train_data[,col],breaks = 25)
-qqnorm(train_data[,col])
-qqline(train_data[,col])
+#  for(col in 2:ncol(train_data)) {
+#hist(train_data[,col],breaks = 25)
+#qqnorm(train_data[,col])
+#qqline(train_data[,col])
     
     
-  }
+#  }
 
 ```
 
 ```{r}
-train <- as.data.frame((train))
+train <- as.data.frame((train_data))
 
-par(mfrow=c(3, 3))
-colnames <- dimnames(train)[[2]]
+#par(mfrow=c(3, 3))
+#colnames <- dimnames(train)[[2]]
 
-  for(col in 2:ncol(train)) {
+ # for(col in 2:ncol(train)) {
 
-    d <- density(na.omit(train[,col]))
+  #  d <- density(na.omit(train[,col]))
    #d <- qqnorm(na.omit(train[,col]))
-    plot(d, type="n", main=colnames[col])
-    polygon(d, col="blue", border="gray")
-  }
+   # plot(d, type="n", main=colnames[col])
+  #  polygon(d, col="blue", border="gray")
+  #}
 ```
 
 #### cor plot
+variables 'rm' and 'medv'  have vif above 5 and raises concerns. 
 ```{r}
+#cor(train_data)
 #TODO -- Explain this corr 
 corrplot(cor(train_data))
-corrplot(cor(train_data), order = "AOE")
+full.model <- glm(train_data$target ~ ., family=binomial, train_data)
+
+car::vif(full.model)
 ```
 
 
@@ -78,8 +83,37 @@ corrplot(cor(train_data), order = "AOE")
     
     
 #### Model Selection
+#### look into pca as well here. 
+We are using backward stepwise selection to choose models. We will begint with full/saturated model and eliminate any variables that are not statistically signinficant. 
+
+#### Full Model
+  Contains all the predictor variables.
+
 ```{r}
 full.model <- glm(train_data$target ~ ., family=binomial, train_data)
 summary(full.model)
-plot(full.model$ fitted.values, full.model$residuals)
+
 ```
+#### Second Model
+   This model contains only statistically significant variables from the full model; only varibles with p-value less than  .05 is included in this model. 
+
+```{r}
+full.model <- glm(train_data$target ~  train_data$nox + train_data$age + train_data$dis + train_data$rad + train_data$tax + train_data$ptratio +train_data$medv ,data=train_data, family=binomial)
+summary(full.model)
+
+```
+
+#### Third Model Model
+   This model excludes any varibles with high VIF.
+```{r}
+exclude.high.vif.model <- glm(train_data$target ~  zn+indus+chas+nox+age+dis+rad+tax+ptratio+lstat     
+, family=binomial, train_data)
+summary(full.model)
+
+```
+#### Model Selection
+Do these for all three models and select a model based on these and explain.
+  ##confusion matrix
+  ##ROC
+  ##AUC
+  #AIC and Residual deviance 
