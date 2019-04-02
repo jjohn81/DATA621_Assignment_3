@@ -141,6 +141,7 @@ round(pca$rot[,1],1)
 plot(pca$sdev[1:12],type="l",ylab="SD of PC", xlab="PC number")
 which.min(pca$val)
 ```
+### Prediction. 
 ```{r}
 full.predict <- predict(full.model, newdata = eval_data, type="response")
 full.predict  <- ifelse(full.predict  > 0.5,1,0)
