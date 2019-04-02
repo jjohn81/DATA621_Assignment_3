@@ -6,6 +6,9 @@ output: html_document
 ```{r setup, include=FALSE}
 library(corrplot)
 library(caret)
+library(ggplot2)
+library(pROC)
+library(tidyverse)
 knitr::opts_chunk$set(echo = TRUE)
 eval_data_url <- 'https://raw.githubusercontent.com/jjohn81/DATA621_Assignment_3/master/crime-evaluation-data_modified.csv'
 train_data_url <- 'https://raw.githubusercontent.com/jjohn81/DATA621_Assignment_3/master/crime-training-data_modified.csv'
@@ -16,6 +19,14 @@ train_data_url <- 'https://raw.githubusercontent.com/jjohn81/DATA621_Assignment_
 
 ```{r Import}
 train_data <- read.csv(train_data_url)
+
+set.seed(101) # Set Seed so that same sample can be reproduced in future also
+# Now Selecting 75% of data as sample from total 'n' rows of the data 
+##https://stackoverflow.com/questions/17200114/how-to-split-data-into-training-testing-sets-using-sample-function
+sample <- sample.int(n = nrow(train_data), size = floor(.75*nrow(train_data)), replace = F)
+train <- train_data[sample, ]
+test  <- train_data[-sample, ]
+
 eval_data <- read.csv(eval_data_url)
 
 ```
@@ -87,10 +98,11 @@ car::vif(full.model)
 We are using backward stepwise selection to choose models. We will begint with full/saturated model and eliminate any variables that are not statistically signinficant. 
 
 #### Full Model
+
   Contains all the predictor variables.
 
 ```{r}
-full.model <- glm(train_data$target ~ ., family=binomial, train_data)
+full.model <- glm(target ~ ., family=binomial, train)
 summary(full.model)
 
 ```
@@ -98,28 +110,137 @@ summary(full.model)
    This model contains only statistically significant variables from the full model; only varibles with p-value less than  .05 is included in this model. 
 
 ```{r}
-full.model <- glm(train_data$target ~  train_data$nox + train_data$age + train_data$dis + train_data$rad + train_data$tax + train_data$ptratio +train_data$medv ,data=train_data, family=binomial)
-summary(full.model)
+sig.model <- glm(target ~  nox + age + dis + rad + tax + ptratio + medv ,data=train, family=binomial)
+summary(sig.model )
 
 ```
 
 #### Third Model Model
    This model excludes any varibles with high VIF.
 ```{r}
-exclude.high.vif.model <- glm(train_data$target ~  zn+indus+chas+nox+age+dis+rad+tax+ptratio+lstat     
-, family=binomial, train_data)
-summary(full.model)
+low.vif.model <- glm(train_data$target ~  zn+indus+chas+nox+age+dis+rad+tax+ptratio+lstat     
+, family=binomial, train)
+summary(low.vif.model)
+
+```
+#### PCA Model
+ This model excludes any varibles with high VIF.
+```{r}
+pca.model <- glm(train_data$target ~  zn+indus+chas+nox+age+dis+rad+tax+ptratio+lstat     
+, family=binomial, train)
+summary(pca.model )
 
 ```
 
 #### Model Selection
     Do these for all three models and select a model based on these and explain.
+```{r}
+pca <- prcomp(test)
+summary(pca)
+round(pca$rot[,1],1)
+plot(pca$sdev[1:12],type="l",ylab="SD of PC", xlab="PC number")
+which.min(pca$val)
+```
+```{r}
+full.predict <- predict(full.model, newdata = eval_data, type="response")
+full.predict  <- ifelse(full.predict  > 0.5,1,0)
 
+pca.eval.data <- eval_data %>% 
+    select(zn, indus, chas, nox, age, dis, rad, tax, ptratio,lstat)
+pca.model.predict <- predict(pca.model, newdata = pca.eval.data, type="response")
+pca.model.predict  <- ifelse(pca.model.predict  > 0.5,1,0)
+
+low.vif.eval.data <- eval_data %>% 
+    select(zn, indus, chas, nox, age, dis, rad, tax, ptratio, lstat)
+
+low.vif.model.predict <- predict(low.vif.model, newdata = low.vif.eval.data, type="response")
+low.vif.model.predict  <- ifelse(low.vif.model.predict  > 0.5,1,0)
+
+sig.eval.data <- eval_data %>% 
+    select( nox  , age  , dis  , rad  , tax  , ptratio  ,medv)
+
+
+#sig.model.predict <- predict(sig.model, newdata = sig.eval.data, type="response")
+#sig.model.predict  <- ifelse(sig.model.predict  > 0.5,1,0)
+
+#pca.predict <- predict(pca.model, newdata = eval_data)
+#low.vif.predict <- predict(low.vif.model, newdata = eval_data)
+#sig.predict <- predict(sig.model, newdata = eval_data)
+
+
+```
 ##confusion matrix
+Confussion matrix for full model
+```{r}
+full.predict <- predict(full.model, newdata = test, type="response")
+full.predict.target  <- ifelse(full.predict  > 0.5,1,0)
+names(full.predict) <- c("target")
+confusionMatrix(table(full.predict.target, test$target))
 
-##ROC
+```
 
-##AUC
+```{r}
+sig.model.predict <- predict(sig.model, newdata = test, type="response")
+sig.model.predict.target  <- ifelse(sig.model.predict  > 0.5,1,0)
+names(sig.model.predict.target) <- c("target")
+confusionMatrix(table(sig.model.predict.target, test$target))
 
-#AIC and Residual deviance 
+```
+```{r}
+pca.model.predict <- predict(pca.model, newdata = test, type="response")
+pca.model.predict.target  <- ifelse(pca.model.predict  > 0.5,1,0)
+names(pca.model.predict.target) <- c("target")
+confusionMatrix(table(pca.model.predict.target, test$target))
+
+```
+
+```{r}
+low.vif.model.predict <- predict(low.vif.model, newdata = test, type="response")
+low.vif.model.predict.target  <- ifelse(low.vif.model.predict  > 0.5,1,0)
+names(low.vif.model.predict.target) <- c("target")
+confusionMatrix(table(low.vif.model.predict.target, test$target))
+
+```
+##ROC and AUC
+```{r}
+rocCurve <- roc(test$target, full.predict, levels=c(0,1))
+
+plot(rocCurve, legacy.axes = TRUE)
+auc(rocCurve)
+```
+```{r}
+rocCurve <- roc(test$target, sig.model.predict, levels=c(0,1))
+
+plot(rocCurve, legacy.axes = TRUE)
+auc(rocCurve)
+```
+
+```{r}
+rocCurve <- roc(test$target, pca.model.predict, levels=c(0,1))
+
+plot(rocCurve, legacy.axes = TRUE)
+auc(rocCurve)
+```
+
+```{r}
+rocCurve <- roc(test$target, low.vif.model.predict, levels=c(0,1))
+
+plot(rocCurve, legacy.axes = TRUE)
+auc(rocCurve)
+```
+
+##AIC 
+```{r}
+full.model$aic
+sig.model$aic
+pca.model$aic
+low.vif.model$aic
+```
+## deviance
+```{r}
+anova(full.model)
+anova(sig.model)
+anova(pca.model)
+anova(low.vif.model)
+```
 
