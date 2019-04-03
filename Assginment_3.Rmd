@@ -141,35 +141,7 @@ round(pca$rot[,1],1)
 plot(pca$sdev[1:12],type="l",ylab="SD of PC", xlab="PC number")
 which.min(pca$val)
 ```
-### Prediction. 
-```{r}
-full.predict <- predict(full.model, newdata = eval_data, type="response")
-full.predict  <- ifelse(full.predict  > 0.5,1,0)
 
-pca.eval.data <- eval_data %>% 
-    select(zn, indus, chas, nox, age, dis, rad, tax, ptratio,lstat)
-pca.model.predict <- predict(pca.model, newdata = pca.eval.data, type="response")
-pca.model.predict  <- ifelse(pca.model.predict  > 0.5,1,0)
-
-low.vif.eval.data <- eval_data %>% 
-    select(zn, indus, chas, nox, age, dis, rad, tax, ptratio, lstat)
-
-low.vif.model.predict <- predict(low.vif.model, newdata = low.vif.eval.data, type="response")
-low.vif.model.predict  <- ifelse(low.vif.model.predict  > 0.5,1,0)
-
-sig.eval.data <- eval_data %>% 
-    select( nox  , age  , dis  , rad  , tax  , ptratio  ,medv)
-
-
-#sig.model.predict <- predict(sig.model, newdata = sig.eval.data, type="response")
-#sig.model.predict  <- ifelse(sig.model.predict  > 0.5,1,0)
-
-#pca.predict <- predict(pca.model, newdata = eval_data)
-#low.vif.predict <- predict(low.vif.model, newdata = eval_data)
-#sig.predict <- predict(sig.model, newdata = eval_data)
-
-
-```
 ##confusion matrix
 Confussion matrix for full model
 ```{r}
@@ -242,4 +214,31 @@ aic
 anova(full.model, sig.model, low.vif.model, pca.model)
 
 ```
+### Prediction. 
+```{r}
+full.predict <- predict(full.model, newdata = eval_data, type="response")
+full.predict  <- ifelse(full.predict  > 0.5,1,0)
 
+pca.eval.data <- eval_data %>% 
+    select(zn, indus, chas, nox, age, dis, rad, tax, ptratio,lstat)
+pca.model.predict <- predict(pca.model, newdata = pca.eval.data, type="response")
+pca.model.predict  <- ifelse(pca.model.predict  > 0.5,1,0)
+
+low.vif.eval.data <- eval_data %>% 
+    select(zn, indus, chas, nox, age, dis, rad, tax, ptratio, lstat)
+
+low.vif.model.predict <- predict(low.vif.model, newdata = low.vif.eval.data, type="response")
+low.vif.model.predict  <- ifelse(low.vif.model.predict  > 0.5,1,0)
+
+sig.eval.data <- eval_data %>% 
+    select( nox  , age  , dis  , rad  , tax  , ptratio  ,medv)
+
+sig.model.predict <- predict(low.vif.model, newdata = low.vif.eval.data, type="response")
+sig.model.predict  <- ifelse(low.vif.model.predict  > 0.5,1,0)
+
+predicted <-  cbind(eval_data,full.predict, sig.model.predict, pca.model.predict, low.vif.model.predict)
+
+write.csv(predicted, file = "Predicted.csv", append = F)
+
+
+```
