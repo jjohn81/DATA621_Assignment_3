@@ -118,7 +118,7 @@ summary(sig.model )
 #### Third Model Model
    This model excludes any varibles with high VIF.
 ```{r}
-low.vif.model <- glm(train_data$target ~  zn+indus+chas+nox+age+dis+rad+tax+ptratio+lstat     
+low.vif.model <- glm(target ~  zn+indus+chas+nox+age+dis+rad+tax+ptratio+lstat     
 , family=binomial, train)
 summary(low.vif.model)
 
@@ -126,7 +126,7 @@ summary(low.vif.model)
 #### PCA Model
  This model excludes any varibles with high VIF.
 ```{r}
-pca.model <- glm(train_data$target ~  zn+indus+chas+nox+age+dis+rad+tax+ptratio+lstat     
+pca.model <- glm(target ~  zn+indus+chas+nox+age+dis+rad+tax+ptratio+lstat     
 , family=binomial, train)
 summary(pca.model )
 
@@ -204,44 +204,42 @@ confusionMatrix(table(low.vif.model.predict.target, test$target))
 ```
 ##ROC and AUC
 ```{r}
-rocCurve <- roc(test$target, full.predict, levels=c(0,1))
+par(mfrow=c(2, 2))
 
-plot(rocCurve, legacy.axes = TRUE)
-auc(rocCurve)
+full.rocCurve <- roc(test$target, full.predict, levels=c(0,1))
+plot(full.rocCurve, legacy.axes = TRUE)
+
+sig.rocCurve <- roc(test$target, sig.model.predict, levels=c(0,1))
+
+plot(sig.rocCurve, legacy.axes = TRUE)
+
+pca.rocCurve <- roc(test$target, pca.model.predict, levels=c(0,1))
+
+plot(pca.rocCurve, legacy.axes = TRUE)
+
+low.vif.rocCurve <- roc(test$target, low.vif.model.predict, levels=c(0,1))
+
+plot(low.vif.rocCurve, legacy.axes = TRUE)
+
+
+auc.model <- matrix(c(auc(full.rocCurve),auc(sig.rocCurve),auc(pca.rocCurve),auc(low.vif.rocCurve)), ncol = 4, nrow=1, byrow = T)
+colnames(auc.model)<-c("Full", "Stat.Sig", "PCA", "Low.VIF")
+rownames(auc.model)<- c("AUC")
+auc.model
 ```
-```{r}
-rocCurve <- roc(test$target, sig.model.predict, levels=c(0,1))
 
-plot(rocCurve, legacy.axes = TRUE)
-auc(rocCurve)
-```
 
-```{r}
-rocCurve <- roc(test$target, pca.model.predict, levels=c(0,1))
-
-plot(rocCurve, legacy.axes = TRUE)
-auc(rocCurve)
-```
-
-```{r}
-rocCurve <- roc(test$target, low.vif.model.predict, levels=c(0,1))
-
-plot(rocCurve, legacy.axes = TRUE)
-auc(rocCurve)
-```
 
 ##AIC 
 ```{r}
-full.model$aic
-sig.model$aic
-pca.model$aic
-low.vif.model$aic
+aic <- matrix(c(full.model$aic,sig.model$aic, pca.model$aic,low.vif.model$aic), ncol = 4, nrow=1, byrow = T)
+colnames(aic)<-c("Full", "Stat.Sig", "PCA", "Low.VIF")
+rownames(aic)<- c("AIC")
+aic
 ```
 ## deviance
 ```{r}
-anova(full.model)
-anova(sig.model)
-anova(pca.model)
-anova(low.vif.model)
+anova(full.model, sig.model, low.vif.model, pca.model)
+
 ```
 
