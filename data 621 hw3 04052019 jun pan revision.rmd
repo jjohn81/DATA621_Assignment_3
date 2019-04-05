@@ -1,0 +1,418 @@
+---
+title: "group 1 HW 3 DATA 621"
+author: "Joby John, Jun Pan, Zachary Herold "
+date: "March 19, 2019"
+output: html_document
+---
+
+Overview In this homework assignment, we will explore, analyze and model a data set containing information on crime for various neighborhoods of a major city. Each record has a response variable indicating whether or not the crime rate is above the median crime rate (1) or not (0). So "target" is a dependent variable (response variable) in this study.  Other variables will be independent variables in this study.
+
+Our objective is to build a binary logistic regression model on the training data set to predict whether the neighborhood will be at risk for high crime levels. we will provide classifications and probabilities for the evaluation data set using our binary logistic regression model. We will only use the variables given to us (or variables that we derive from the variables provided). Below is a short description of the variables of interest in the data set: 
+ 
+
+Here is the description of the variables:
+???(1) zn: proportion of residential land zoned for large lots (over 25000 square feet) (predictor variable) 
+(2) indus: proportion of non-retail business acres per suburb (predictor variable) ???
+(3) chas: a dummy var. for whether the suburb borders the Charles River (1) or not (0) (predictor variable) ???
+(4) nox: nitrogen oxides concentration (parts per 10 million) (predictor variable) ???
+(5) rm: average number of rooms per dwelling (predictor variable) ???
+(6) age: proportion of owner-occupied units built prior to 1940 (predictor variable) ???
+(7) dis: weighted mean of distances to five Boston employment centers (predictor variable) ???
+(8) rad: index of accessibility to radial highways (predictor variable) 
+(9)??? tax: full-value property-tax rate per $10,000 (predictor variable) 
+(10)??? ptratio: pupil-teacher ratio by town (predictor variable) 
+(11)??? black: 1000(Bk - 0.63)2 where Bk is the proportion of blacks by town (predictor variable) 
+(12)??? lstat: lower status of the population (percent) (predictor variable) 
+(13)??? medv: median value of owner-occupied homes in $1000s (predictor variable) 
+(14) ??? target: whether the crime rate is above the median crime rate (1) or not (0) (response variable) 
+
+
+
+Write Up: 
+ 
+1. DATA EXPLORATION (35 Points) 
+ 
+Describe the size and the variables in the crime training data set. Consider that too much detail will cause a manager to lose interest while too little detail will make the manager consider that you aren't doing your job. Some suggestions are given below. Please do NOT treat this as a check list of things to do to complete the assignment. You should have your own thoughts on what to tell the boss. These are just ideas. 
+a. Mean / Standard Deviation / Median 
+b. Bar Chart or Box Plot of the data 
+c. Is the data correlated to the target variable (or to other variables?) 
+d. Are any of the variables missing and need to be imputed "fixed"? 
+
+
+
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+library(car)
+library(caTools)
+library(caret)
+library(corrplot)
+library(data.table)
+library(dplyr)
+library(geoR)
+library(ggplot2)
+library(grid)
+library(gridExtra)
+library(kableExtra)
+library(knitr)
+library(MASS)
+library(naniar)
+library(nortest)
+library(pROC)
+library(pscl)
+library(psych)
+library(reshape)
+library(PerformanceAnalytics)
+library(ROCR)
+library(testthat)
+```
+
+Using read.csv function to access data
+
+```{r}
+train <- read.csv("https://raw.githubusercontent.com/jjohn81/DATA621_Assignment_3/master/crime-training-data_modified.csv")
+evaluation <- read.csv("https://raw.githubusercontent.com/jjohn81/DATA621_Assignment_3/master/crime-evaluation-data_modified.csv")
+```
+
+using summary function to get the median, mean, quartiles, min and max of the variables.
+
+```{r}
+summary(train)
+```
+
+Using glimpse function to overview the class of variable and the dataset.
+
+```{r}
+glimpse(train)
+```
+
+Using vis_miss function and is.na function to check the missing data
+
+```{r}
+vis_miss(train)
+```
+
+There is no missing data in the dataset.
+
+```{r}
+colSums(is.na(train))
+```
+
+There is no missing data in the dataset.
+
+Let us use ggplot to overview the dependent variable:
+
+```{r}
+table(train$target)
+```
+
+```{r}
+boxplot(train,xlab="predictor comparitive")
+```
+Density plot of variables 
+```{r}
+train <- as.data.frame((train))
+
+par(mfrow=c(3, 3))
+colnames <- dimnames(train)[[2]]
+
+  for(col in 2:ncol(train)) {
+
+    d <- density(na.omit(train[,col]))
+   #d <- qqnorm(na.omit(train[,col]))
+    plot(d, type="n", main=colnames[col])
+    polygon(d, col="blue", border="gray")
+  }
+
+
+```
+
+2. DATA PREPARATION (35 Points) 
+ 
+Describe how you have transformed the data by changing the original variables or creating new variables. If you did transform the data or create new variables, discuss why you did this. Here are some possible transformations. 
+ 
+a. Fix missing values (maybe with a Mean or Median value)
+b. Create flags to suggest if a variable was missing 
+c. Transform data by putting it into buckets 
+d. Mathematical transforms such as log or square root (or use Box-Cox) 
+e. Combine variables (such as ratios or adding or multiplying) to create new variables 
+
+From part 1, we knew there was no missing value in this database.  How about the outliners, we have no idea about.  So it order to better understanding the dataset.  We had betther to visualize the dat first.  
+
+```{r warning=FALSE, echo=FALSE, message=FALSE, eval=TRUE}
+for ( column in colnames(train)) { plot(density(train[,column]), main = column)}
+```
+
+```{r}
+# Boxplot showing the correlation of attributes vs target
+ggplot(train, aes(factor(target), zn)) + geom_boxplot()
+ggplot(train, aes(factor(target), indus)) + geom_boxplot()
+ggplot(train, aes(factor(target), chas)) + geom_boxplot()
+ggplot(train, aes(factor(target), nox)) + geom_boxplot()
+ggplot(train, aes(factor(target), rm)) + geom_boxplot()
+ggplot(train, aes(factor(target), age)) + geom_boxplot()
+ggplot(train, aes(factor(target), dis)) + geom_boxplot()
+ggplot(train, aes(factor(target), rad)) + geom_boxplot()
+ggplot(train, aes(factor(target), tax)) + geom_boxplot()
+ggplot(train, aes(factor(target), ptratio)) + geom_boxplot()
+ggplot(train, aes(factor(target), lstat)) + geom_boxplot()
+ggplot(train, aes(factor(target), medv)) + geom_boxplot()
+```
+From the box plot, we can see that chas and rm has very little correlation with target variable.  We will drop them.
+
+```{r}
+train$chas <- NULL
+train$rm <- NULL
+```
+
+```{r}
+head(train)
+```
+
+
+
+
+
+
+```{r warning=FALSE, echo=FALSE}
+chart.Correlation(train)
+```  
+
+From the above figure, some predictor variables show a high degree of correlation with each other.  For example, a high degree of industrial real estate in a neighborhood would have a negative effect on real estate values. A neighborhood with lower median real estate values would be more highly susceptible to higher than usual crime.  
+
+we decided to transform the numeric `zn` variable to a derived categorical variable called `zn_3`. For this new `zn_3` variable, *1* means more than 3% of residential land zoned for large lots (over 25000 square feet), and *0* means less than or equal to 3% of residential land zoned for large lots (over 25000 square feet).
+
+```{r echo=FALSE}
+ggplot(train, aes(x=zn)) + geom_density(aes(colour=factor(target))) + xlim(0,100) +
+  geom_vline(xintercept = 3)
+train$zn_3 <- ifelse(train$zn > 3, 1, 0)
+train$zn_3 <- as.factor(train$zn_3)
+t <- as.data.frame(table(zn_3=train$zn_3, Target=train$target))
+kable(t, align='c')
+```  
+
+Then, we dropped zn
+```{r}
+train$zn <- NULL
+```
+
+```{r}
+head(train)
+```
+
+```{r}
+summary(train)
+```
+
+```{r}
+head(train)
+```
+
+```{r}
+train_clean <- train
+```
+
+3. BUILD MODELS (25 Points) 
+ 
+Using the training data, build at least three different binary logistic regression models, using different variables (or the same variables with different transformations). You may select the variables manually, use an approach such as Forward or Stepwise, use a different approach, or use a combination of techniques. Describe the techniques you used. If you manually selected a variable for inclusion into the model or exclusion into the model, indicate why this was done. 
+ 
+Be sure to explain how you can make inferences from the model, as well as discuss other relevant model output. Discuss the coefficients in the models, do they make sense? Are you keeping the model even though it is counter intuitive? Why? The boss needs to know. 
+ 
+
+#Model 1
+Here is a model with all predictors (and no transformations) included
+```{r}
+model1 <- glm(target ~.,family=binomial,data=train_clean)
+summary(model1)
+```
+
+If we set p <0.05 will be statistical significance, we can find from the above analysis, the following predictors are positively associated with crime rates (nox, age, dis, rad, ptratio, zn_3 and medv); the following predictor is negatively associated with crime rates(tax).
+
+```{r}
+corrplot(cor(train_data))
+car::vif(full.model)
+```
+
+It shows following variables are position correlated, for example:  tax and rad, indus and age; some varibles are negetive correlated such as indus and dis, nox and dis.  Many of these correlations make sense. For example, the correlation between tax and rad, suggests that neighborhoods with relatively better access to radial highways in the Boston area also have relatively high property tax rates. Similarly, the median value of homes (medv) appears to be highly correlated with the average number of rooms per dwelling (rm). Nitrous oxide levels (nox) appear to be higher in neighborhoods with relatively high levels of industrial zoning (indus), etc.  
+
+Such strong correlations can to be used during model building to select what are expected to be significant predictors of the response variable while helping to avoid the potential inclusion of additional variables that may be collinear to those already included. For example, the 'tax' variable might justifiably be dropped from consideration during model building due to its high correlation with the 'rad' variable.
+
+
+#Second Model
+   This model contains only statistically significant variables from the full model; only varibles with p-value less than  .05 is included in this model.  We also excluded the tax because it was high correlated with rad.
+
+```{r}
+model2 <- glm(target ~  nox + dis + rad + ptratio + medv + zn_3 ,data=train_clean, family=binomial)
+summary(model2 )
+
+```
+
+#Third Model Model
+This model excludes any varibles with high VIF.
+In statistics, the variance inflation factor (VIF) is the ratio of variance in a model with multiple terms, divided by the variance of a model with one term alone.[1] It quantifies the severity of multicollinearity in an ordinary least squares regression analysis. It provides an index that measures how much the variance (the square of the estimate's standard deviation) of an estimated regression coefficient is increased because of collinearity.
+```{r}
+#install.packages("fmsb")
+library(fmsb)
+```
+
+```{r}
+VIF(lm(target ~  zn_3+indus+nox+age+dis+rad+tax+ptratio+lstat, data=train_clean))
+```
+
+```{r}
+model3 <- glm(target ~  zn_3+indus+nox+age+dis+rad+tax+ptratio+lstat    
+, family=binomial, train_clean)
+summary(model3)
+
+```
+
+
+4. SELECT MODELS (25 Points) 
+ 
+Decide on the criteria for selecting the best binary logistic regression model. Will you select models with slightly worse performance if it makes more sense or is more parsimonious? Discuss why you selected your models.  
+ 
+For the binary logistic regression model, will you use a metric such as log likelihood, AIC, ROC curve, etc.? Using the training data set, evaluate the binary logistic regression model based on (a) accuracy, (b) classification error rate, (c) precision, (d) sensitivity, (e) specificity, (f) F1 score, (g) AUC, and (h) confusion matrix. Make predictions using the evaluation data set. 
+
+
+After we compared AIC, Residual of the above three models, we would like choose model 1 as the select models.  Because the residual is the lowest.  
+
+
+##confusion matrix
+Confussion matrix for full model (model1)
+```{r}
+model1.predict <- predict(model1, newdata = train_clean, type="response")
+model1.predict.target  <- ifelse(model1.predict  > 0.5,1,0)
+names(model1.predict) <- c("target")
+confusionMatrix(table(model1.predict.target, train_clean$target))
+
+```
+
+ROC and AUC for model1
+```{r}
+pred <- predict(model1, type="response")
+pred2 <- prediction(pred, train_clean$target)
+pred3 <- performance(pred2, measure = "tpr", x.measure = "fpr")
+plot(pred3)
+```
+
+```{r}
+auc <- performance(pred2, measure = "auc")
+auc <- auc@y.values[[1]]
+auc
+```
+
+
+
+
+
+
+```{r}
+model2.predict <- predict(model2, newdata = train_clean, type="response")
+model2.predict.target  <- ifelse(model2.predict  > 0.5,1,0)
+names(model2.predict.target) <- c("target")
+confusionMatrix(table(model2.predict.target, train_clean$target))
+
+```
+
+
+ROC and AUC for model2
+```{r}
+pred <- predict(model2, type="response")
+pred2 <- prediction(pred, train_clean$target)
+pred3 <- performance(pred2, measure = "tpr", x.measure = "fpr")
+plot(pred3)
+```
+
+
+```{r}
+auc <- performance(pred2, measure = "auc")
+auc <- auc@y.values[[1]]
+auc
+```
+
+
+```{r}
+model3.predict <- predict(model3, newdata = train_clean, type="response")
+model3.predict.target  <- ifelse(model3.predict  > 0.5,1,0)
+names(model3.predict.target) <- c("target")
+confusionMatrix(table(model3.predict.target, train_clean$target))
+
+```
+
+
+ROC and AUC for model3
+```{r}
+pred <- predict(model3, type="response")
+pred2 <- prediction(pred, train_clean$target)
+pred3 <- performance(pred2, measure = "tpr", x.measure = "fpr")
+plot(pred3)
+```
+
+
+```{r}
+auc <- performance(pred2, measure = "auc")
+auc <- auc@y.values[[1]]
+auc
+```
+
+
+
+
+deviance
+```{r}
+anova(model1, model2, model3)
+```
+
+
+
+#After we compared with residul (the smaller, the better), sensitivity(the higher, the better), specificity(the higher, the better),  We feel that full model (model1) is the best.
+
+
+Before make prediction on the evaluation data set, we need to go through the data cleaning ana transformation as the train_clean dataset.  
+```{r}
+head(evaluation)
+```
+
+```{r}
+evaluation$chas <- NULL
+evaluation$rm <- NULL
+```
+
+```{r}
+head(evaluation)
+```
+
+
+```{r echo=FALSE}
+evaluation$zn_3 <- ifelse(evaluation$zn > 3, 1, 0)
+evaluation$zn_3 <- as.factor(evaluation$zn_3)
+```  
+
+```{r}
+head(evaluation)
+```
+
+
+```{r}
+evaluation$zn <- NULL
+```
+
+```{r}
+eva_clean<-evaluation
+```
+
+
+
+### Prediction for the best model (model1)
+```{r}
+modelfinal <- predict(model1, newdata = eva_clean, type="response")
+
+y_pred_num <- ifelse(modelfinal > 0.5, 1, 0)
+y_pred <- factor(y_pred_num, levels=c(0, 1))
+summary(y_pred)
+```
+
+
+
+
+
+
